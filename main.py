@@ -5,8 +5,7 @@ InvalidTokenError, DecodeError, InvalidSignatureError           # JWT Exceptions
 from time import time as unixtime                               # To get Unixtime
 from functools import wraps                                     # To create decorators
 import secret_config                                            # Secret config
-
-DEBUG = True
+from config import config                                       # Configs
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = secret_config.secrets["SECRET_KEY"]
@@ -33,7 +32,7 @@ def login_required(func):
             print(e)
             return jsonify({"error": "An internal server error has occured. Please contact the admin"}), 500
 
-        if DEBUG:
+        if config["debug"]:
             print(f"\nPayload: {payload}\n")
             print(f"Expiration: {payload['expiration']} - Current time: {int(unixtime())}")
         
@@ -61,7 +60,7 @@ def auth(*args, **kwargs):
 
 @app.route("/authstatus", methods=["GET"])
 def get_status():
-    return jsonify({"auth_server_status": "OK" }), 200
+    return jsonify(config["auth_status_message"]), 200
 
 # Login
 @app.route("/")
@@ -80,7 +79,7 @@ def login():
         # session["logged_in"] = True
         token = jwt.encode({
             "user": data["username"],
-            "expiration": int(unixtime() + 120),
+            "expiration": int(unixtime() + config["token_valid_time"]),
         },
         app.config["SECRET_KEY"], "HS256")
     else:
@@ -90,4 +89,4 @@ def login():
 
 
 if __name__ == "__main__":
-    app.run(debug=DEBUG, host="127.0.0.1", port=5000)
+    app.run(debug=config["debug"], host=config["address"], port=config["port"])
