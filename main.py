@@ -4,12 +4,13 @@ from jwt.exceptions import ExpiredSignatureError, InvalidTokenError, DecodeError
 # from datetime import datetime, timedelta
 from time import time as unixtime
 from functools import wraps
+from secrets import secrets
 
 DEBUG = True
 
 app = Flask(__name__)
 # TO BE CHANGED OFC
-app.config["SECRET_KEY"] = "1234"
+app.config["SECRET_KEY"] = secrets["SECRET_KEY"]
 
 def login_required(func):
     @wraps(func)
