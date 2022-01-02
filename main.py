@@ -1,16 +1,16 @@
-from flask import Flask, json, request, jsonify
-import jwt
-from jwt.exceptions import ExpiredSignatureError, InvalidTokenError, DecodeError, InvalidSignatureError
-# from datetime import datetime, timedelta
-from time import time as unixtime
-from functools import wraps
-from secrets import secrets
+from flask import Flask, request, jsonify, session              # Everything Flask related
+import jwt                                                      # JSON Web Tokens
+from jwt.exceptions import ExpiredSignatureError, \
+InvalidTokenError, DecodeError, InvalidSignatureError           # JWT Exceptions
+from time import time as unixtime                               # To get Unixtime
+from functools import wraps                                     # To create decorators
+import secret_config                                            # Secret config
 
 DEBUG = True
 
 app = Flask(__name__)
-# TO BE CHANGED OFC
-app.config["SECRET_KEY"] = secrets["SECRET_KEY"]
+app.config["SECRET_KEY"] = secret_config.secrets["SECRET_KEY"]
+
 
 def login_required(func):
     @wraps(func)
@@ -23,11 +23,11 @@ def login_required(func):
                 raise ExpiredSignatureError
 
         except (InvalidTokenError, DecodeError):
-            return jsonify({"error": "Invalid token"}), 403
+            return jsonify({"error": "Invalid token. Please login again"}), 403
         except ExpiredSignatureError:
             return jsonify({"error": "Token expired. Please login again"}), 401
-        except ExpiredSignatureError:
-            return jsonify({"error": "Token expired"}), 401
+        except InvalidSignatureError:
+            return jsonify({"error": "Invalid signature. Please login again"}), 401
         # Catch all
         except Exception as e:
             print(e)
