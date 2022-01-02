@@ -2,19 +2,21 @@ from flask import Flask, request, jsonify                       # Everything Fla
 import jwt                                                      # JSON Web Tokens
 from jwt.exceptions import ExpiredSignatureError, \
 InvalidTokenError, DecodeError, InvalidSignatureError           # JWT Exceptions
-from time import time                              # To get Unixtime
+from time import time                                           # To get Unixtime
 from functools import wraps                                     # To create decorators
 import secret_config                                            # Secret config
 from config import config                                       # Configs
+
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = secret_config.secrets["SECRET_KEY"]
 
 
 def unixtime():
+    # Returns Unixtime in int
     return int(time())
 
-
+# Authentication decorator
 def login_required(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
@@ -27,10 +29,13 @@ def login_required(func):
 
         except (InvalidTokenError, DecodeError):
             return jsonify({"error": "Invalid token. Please login again"}), 403
+
         except ExpiredSignatureError:
             return jsonify({"error": "Token expired. Please login again"}), 401
+
         except InvalidSignatureError:
             return jsonify({"error": "Invalid signature. Please login again"}), 401
+
         # Catch all
         except Exception as e:
             print(e)
@@ -41,6 +46,7 @@ def login_required(func):
             print(f"Expiration: {payload['expiration']} - Current time: {int(unixtime())}")
         
         kwargs["payload"] = payload
+        kwargs["headers"] = request.headers
 
         return func(*args, **kwargs)
     
@@ -58,6 +64,7 @@ def public():
 @login_required
 def auth(*args, **kwargs):
     payload = kwargs["payload"]
+    headers = kwargs["headers"]
 
     return jsonify(payload)
 

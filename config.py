@@ -10,5 +10,7 @@ config = {
     # How many seconds tokens will be valid for
     "token_valid_time": 120,
     # Returned by /authstatus endpoint
-    "auth_status_message": {"auth_server_status": "OK"}
+    "auth_status_message": {"auth_server_status": "OK"},
+    # secret_config.py location, currently does nothing
+    "secret_config_location": "./"
 }

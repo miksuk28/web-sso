@@ -9,3 +9,6 @@ Security things:
 * CHANGE SECRET_KEY !!!
 * Install proper server (not Flak dev server)
 * Check port, IP etc...
+
+Other Things:
+* Consider making a centralized logging server?
