@@ -1,14 +1,18 @@
-from flask import Flask, request, jsonify, session              # Everything Flask related
+from flask import Flask, request, jsonify                       # Everything Flask related
 import jwt                                                      # JSON Web Tokens
 from jwt.exceptions import ExpiredSignatureError, \
 InvalidTokenError, DecodeError, InvalidSignatureError           # JWT Exceptions
-from time import time as unixtime                               # To get Unixtime
+from time import time                              # To get Unixtime
 from functools import wraps                                     # To create decorators
 import secret_config                                            # Secret config
 from config import config                                       # Configs
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = secret_config.secrets["SECRET_KEY"]
+
+
+def unixtime():
+    return int(time())
 
 
 def login_required(func):
@@ -18,7 +22,7 @@ def login_required(func):
 
         try:
             payload = jwt.decode(token, app.config["SECRET_KEY"], "HS256")
-            if payload["expiration"] <= int(unixtime()):
+            if payload["expiration"] <= unixtime():
                 raise ExpiredSignatureError
 
         except (InvalidTokenError, DecodeError):
@@ -60,6 +64,7 @@ def auth(*args, **kwargs):
 
 @app.route("/authstatus", methods=["GET"])
 def get_status():
+    # Used by clients to check server status
     return jsonify(config["auth_status_message"]), 200
 
 # Login
