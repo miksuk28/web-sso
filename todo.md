@@ -1,6 +1,6 @@
 # Todos
 Database and/or verification class:
-* Create Class that connects to database
+* Create Class that connects to database and manages sessions
 * Encapsulates relevant data
 * Reusable
 
