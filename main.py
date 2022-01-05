@@ -16,6 +16,7 @@ def unixtime():
     # Returns Unixtime in int
     return int(time())
 
+
 # Authentication decorator
 def login_required(func):
     @wraps(func)
@@ -48,6 +49,7 @@ def login_required(func):
         kwargs["payload"] = payload
         kwargs["headers"] = request.headers
 
+        # Data gets passed back into public original function and run
         return func(*args, **kwargs)
     
     return decorated_function
@@ -69,6 +71,7 @@ def auth(*args, **kwargs):
     return jsonify(payload)
 
 
+# Get authserver status. For displaying messages during downtime
 @app.route("/authstatus", methods=["GET"])
 def get_status():
     # Used by clients to check server status
@@ -76,11 +79,11 @@ def get_status():
 
 # Login
 @app.route("/")
-def home():
-    if not session.get("logged_in"):
-        return jsonify({"error": "You need to sign in"}), 401
-    else:
-        return jsonify({"message": "Logged in currently"})
+@login_required
+def home(*args, **kwargs):
+    payload = kwargs["payload"]
+
+    return jsonify({"message": f"Welcome {payload['user']}"})
 
 
 @app.route("/login", methods=["POST"])
