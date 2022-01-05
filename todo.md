@@ -1,5 +1,6 @@
 # Todos
 Database and/or verification class:
+* Change __ to _
 * Create Class that connects to database and manages sessions
 * Encapsulates relevant data
 * Reusable
