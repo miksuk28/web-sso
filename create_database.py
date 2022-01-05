@@ -2,7 +2,6 @@ from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData
 engine = create_engine("sqlite:///users.db", echo=True)
 meta = MetaData()
 
-
 users = Table(
     "users", meta,
     Column("id", Integer, primary_key=True, nullable=False),
