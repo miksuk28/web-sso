@@ -4,7 +4,7 @@ from jwt.exceptions import ExpiredSignatureError, \
 InvalidTokenError, DecodeError, InvalidSignatureError           # JWT Exceptions
 from time import time                                           # To get Unixtime
 from functools import wraps                                     # To create decorators
-import secret_config                                            # Secret config
+import secret_config                                            # Secret config, containes SECRET_KEY
 from config import config                                       # Configs
 
 
