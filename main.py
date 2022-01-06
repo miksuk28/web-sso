@@ -32,7 +32,7 @@ def login_required(func):
 
         if config["debug"]:
             print(f"\nPayload: {payload}\n")
-            print(f"Expiration: {payload['expiration']} - Current time: {int(unixtime())}")
+            print(f"Expiration: {payload['expiration']}")
         
         kwargs["payload"] = payload
         kwargs["headers"] = request.headers

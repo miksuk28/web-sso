@@ -12,7 +12,7 @@ import hashlib
 class UsersDatabaseWrapper:
     def __init__(self, db_file, token_validity, secret_key, debug=False, min_pass_length=8):
         self._db_file = db_file
-        self._db = SqliteDict(db_file, autocommit=False, tablename="authserver")
+        self._db = SqliteDict(db_file, autocommit=True, tablename="authserver")
         self._token_validity = token_validity
         self._SECRET_KEY = secret_key
         self._CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
@@ -56,6 +56,12 @@ class UsersDatabaseWrapper:
 
     
     def add_user(self, username, password=None, access_level="user", disallow_tokens_before=0, restrict_access_to=None, block_login=False):
+        try:
+            _ = self._db["users"][username]
+            raise UserAlreadyExists(username)
+        except KeyError:
+            pass
+
         salt = gensalt()
         
         if password is None:
@@ -64,20 +70,16 @@ class UsersDatabaseWrapper:
         else:
             reset_password = False
 
-        if self._db.get(username, default=None) != None:
-            raise UserAlreadyExists(username)
-        else:
-            user = {"username": username, "hashed_password": self._hash_password(password, salt),
-            "salt": salt, "access_level": access_level, "disallow_tokens_before": disallow_tokens_before,
-            "restrict_access_to": restrict_access_to, "reset_password": reset_password, "block_login": block_login}
-            
-            self._db["users"][username] = user
-            self._db.commit()
+        user = {"username": username, "hashed_password": self._hash_password(password, salt),
+        "salt": salt, "access_level": access_level, "disallow_tokens_before": disallow_tokens_before,
+        "restrict_access_to": restrict_access_to, "reset_password": reset_password, "block_login": block_login}
+        
+        self._db["users"][username] = user
 
-            if reset_password:
-                return {"username": username, "access_level": access_level, "password": password}
-            else:
-                return {"username": username, "access_level": access_level}
+        if reset_password:
+            return {"username": username, "access_level": access_level, "password": password}
+        else:
+            return {"username": username, "access_level": access_level}
 
 
     def auth(self, token):
