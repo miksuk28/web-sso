@@ -28,14 +28,14 @@ def login_required(func):
             if payload["expiration"] <= unixtime():
                 raise ExpiredSignatureError
 
-        except (InvalidTokenError, DecodeError):
-            return jsonify({"error": "Invalid token. Please login again"}), 403
-
         except ExpiredSignatureError:
             return jsonify({"error": "Token expired. Please login again"}), 401
 
         except InvalidSignatureError:
             return jsonify({"error": "Invalid signature. Please login again"}), 401
+
+        except (InvalidTokenError, DecodeError):
+            return jsonify({"error": "Invalid token. Please login again"}), 403
 
         # Catch all
         except Exception as e:
@@ -68,7 +68,7 @@ def auth(*args, **kwargs):
     payload = kwargs["payload"]
     headers = kwargs["headers"]
 
-    return jsonify(payload)
+    return jsonify(payload, headers)
 
 
 # Get authserver status. For displaying messages during downtime
