@@ -18,10 +18,14 @@ config = {
     "port": 5000,
     # How many seconds tokens will be valid for
     "token_valid_time": 120,
+    # Allow anyone to register without admin permission
+    "allow_register": False,
     # Returned by /authstatus endpoint
     "auth_status_message": _server_status_codes,
     # secret_config.py location, currently does nothing
     "secret_config_location": "",
     # Block date which overrides all user blocks
-    "global_dissalow_tokens_before": 0
+    "global_dissalow_tokens_before": 0,
+    # Minimum password length
+    "min_password_length": 8
 }

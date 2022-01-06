@@ -1,10 +1,11 @@
+from db.wrapper_exceptions import IncorrectPassword, TokenExpired, TokenInvalid, UserNotFound                                                      # JSON Web Tokens
+import secret_config                                            # Secret config, containes SECRET_KEY
+from db.db_wrapper import UsersDatabaseWrapper
 from flask import Flask, request, jsonify                       # Everything Flask related
-import jwt                                                      # JSON Web Tokens
 from jwt.exceptions import ExpiredSignatureError, \
 InvalidTokenError, DecodeError, InvalidSignatureError           # JWT Exceptions
 from time import time                                           # To get Unixtime
 from functools import wraps                                     # To create decorators
-import secret_config                                            # Secret config, containes SECRET_KEY
 from config import config                                       # Configs
 
 
@@ -24,18 +25,13 @@ def login_required(func):
         token = request.headers.get("token")
 
         try:
-            payload = jwt.decode(token, app.config["SECRET_KEY"], "HS256")
-            if payload["expiration"] <= unixtime():
-                raise ExpiredSignatureError
+            payload = db.auth(token)
 
-        except ExpiredSignatureError:
+        except TokenExpired:
             return jsonify({"error": "Token expired. Please login again"}), 401
 
-        except InvalidSignatureError:
+        except TokenInvalid:
             return jsonify({"error": "Invalid signature. Please login again"}), 401
-
-        except (InvalidTokenError, DecodeError):
-            return jsonify({"error": "Invalid token. Please login again"}), 403
 
         # Catch all
         except Exception as e:
@@ -90,18 +86,18 @@ def home(*args, **kwargs):
 def login():
     data = request.get_json()
 
-    if data["username"] == "user" and data["password"] == "1234":
-        # session["logged_in"] = True
-        token = jwt.encode({
-            "user": data["username"],
-            "expiration": int(unixtime() + config["token_valid_time"]),
-        },
-        app.config["SECRET_KEY"], "HS256")
-    else:
-        return jsonify({"error": "Unable to verify"}), 403
+    try:
+        token = db.login(username=data["username"], password=data["password"], service_id=config["service_id"], access_level=data["access_level"], restricted_to=None)
+    
+    except UserNotFound:
+        return jsonify({"error": f"User {data['username']} not found"}), 404
+
+    except IncorrectPassword:
+        return jsonify({"error": "Password is incorrect"}), 403
 
     return jsonify({"token": token})
 
 
 if __name__ == "__main__":
+    db = UsersDatabaseWrapper(db_file="users.db", token_validity=config["token_valid_time"], secret_key=secret_config.secrets["SECRET_KEY"], debug=config["debug"], min_pass_length=config["min_password_length"])
     app.run(debug=config["debug"], host=config["address"], port=config["port"])
