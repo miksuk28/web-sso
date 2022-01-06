@@ -2,8 +2,6 @@ from db.wrapper_exceptions import IncorrectPassword, TokenExpired, TokenInvalid,
 import secret_config                                            # Secret config, containes SECRET_KEY
 from db.db_wrapper import UsersDatabaseWrapper
 from flask import Flask, request, jsonify                       # Everything Flask related
-from jwt.exceptions import ExpiredSignatureError, \
-InvalidTokenError, DecodeError, InvalidSignatureError           # JWT Exceptions
 from time import time                                           # To get Unixtime
 from functools import wraps                                     # To create decorators
 from config import config                                       # Configs
