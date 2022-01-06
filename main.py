@@ -1,19 +1,13 @@
-from db.wrapper_exceptions import IncorrectPassword, TokenExpired, TokenInvalid, UserNotFound                                                      # JSON Web Tokens
 import secret_config                                            # Secret config, containes SECRET_KEY
-from db.db_wrapper import UsersDatabaseWrapper
-from flask import Flask, request, jsonify                       # Everything Flask related
-from time import time                                           # To get Unixtime
-from functools import wraps                                     # To create decorators
 from config import config                                       # Configs
+from db.db_exceptions import IncorrectPassword, TokenExpired, TokenInvalid, UserNotFound                                                      # JSON Web Tokens
+from db.db import UsersDatabaseWrapper
+from flask import Flask, request, jsonify                       # Everything Flask related                                          # To get Unixtime
+from functools import wraps                                     # To create decorators
 
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = secret_config.secrets["SECRET_KEY"]
-
-
-def unixtime():
-    # Returns Unixtime in int
-    return int(time())
 
 
 # Authentication decorator

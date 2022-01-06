@@ -4,7 +4,7 @@ from sqlitedict import SqliteDict
 from bcrypt import gensalt
 from time import time
 from random import choice
-from .wrapper_exceptions import *
+from .db_exceptions import *
 import jwt
 import hashlib
 
