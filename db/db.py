@@ -59,9 +59,17 @@ class UsersDatabaseWrapper:
         else:
             reset_password = False
 
-        user = {"username": username, "hashed_password": self._hash_password(password, salt=salt),
-        "salt": salt, "access_level": access_level, "disallow_tokens_before": disallow_tokens_before,
-        "restrict_access_to": restrict_access_to, "reset_password": reset_password, "block_login": block_login}
+        user = {
+            "username": username,
+            "hashed_password": self._hash_password(password, salt=salt),
+            "salt": salt,
+            "access_level": access_level,
+            "disallow_tokens_before": disallow_tokens_before,
+            "restrict_access_to": restrict_access_to,
+            "reset_password": reset_password,
+            "block_login": block_login,
+            "registered": self._unixtime()
+        }
         
         self._users[username] = user
 
@@ -134,7 +142,5 @@ class UsersDatabaseWrapper:
             return token
         else:
             raise IncorrectPassword
-
-
 
 

@@ -1,13 +1,21 @@
-import secret_config                                            # Secret config, containes SECRET_KEY
-from config import config                                       # Configs
+import secret_config
+from config import config
 from db.db_exceptions import IncorrectPassword, TokenExpired, TokenInvalid, UserAlreadyExists, UserNotFound                                                      # JSON Web Tokens
 from db.db import UsersDatabaseWrapper
-from flask import Flask, json, request, jsonify                       # Everything Flask related                                          # To get Unixtime
-from functools import wraps                                     # To create decorators
+from flask import Flask, request, jsonify
+from functools import wraps
+from logger import Logger
 
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = secret_config.secrets["SECRET_KEY"]
+
+
+@app.route("/reload_config", methods=["GET"])
+def reload_config():
+    from config import config
+    print(config)
+    return jsonify({"info": "Config reloaded"})
 
 
 # Authentication decorator
@@ -49,7 +57,7 @@ def public():
     return "For public"
 
 
-# Authenticated
+# Authenticated, every request made to backend should be verified here
 @app.route("/auth")
 @login_required
 def auth(*args, **kwargs):
@@ -63,7 +71,9 @@ def auth(*args, **kwargs):
 @app.route("/authstatus", methods=["GET"])
 def get_status():
     # Used by clients to check server status
+    logger.log("/authstatus", service_id=1)
     return jsonify(config["auth_status_message"]), 200
+
 
 # Login
 @app.route("/")
@@ -90,16 +100,11 @@ def register():
             password=data["password"]
         )
 
+        logger.log(text="Created User", user=data["username"])
     except UserAlreadyExists:
         return jsonify({"error": "This username already exists. Please pick another one."}), 409
 
     return jsonify(user), 200
-
-    '''
-    except Exception as e:
-        print(e)
-        return jsonify({"error": "Data received is invalid. Please check documentation"}), 400
-    '''
 
 
 @app.route("/login", methods=["POST"])
@@ -109,7 +114,7 @@ def login():
 
     try:
         token = db.login(username=data["username"], password=data["password"], restricted_to=None)
-    
+        logger.log("Generated token", service_id=1, user=data["username"], ip="localhost")
     except UserNotFound:
         return jsonify({"error": f"User {data['username']} not found"}), 404
 
@@ -125,5 +130,6 @@ def page_not_found(e):
 
 
 if __name__ == "__main__":
+    logger = Logger("log.txt")
     db = UsersDatabaseWrapper(config, secret_config.secrets)
     app.run(debug=config["debug"], host=config["address"], port=config["port"])

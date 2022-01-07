@@ -10,7 +10,7 @@ _server_status_codes = {
 config = {
     # Enable or disable Flask server debug mode and output debug info
     # SET TO FALSE IN PRODUCTION ENV.
-    "debug": True,
+    "debug": False,
     
     # Address to host server on
     "address": "127.0.0.1",
@@ -28,7 +28,7 @@ config = {
     },
         
     # How many seconds tokens will be valid for
-    "token_valid_time": 120,
+    "token_valid_time": 10,
     
     # Allow anyone to register without admin permission
     "allow_register": True,
