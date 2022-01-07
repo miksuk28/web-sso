@@ -10,27 +10,16 @@ import hashlib
 
 
 class UsersDatabaseWrapper:
-    def __init__(self, db_file, token_validity, secret_key, debug=False, min_pass_length=8):
-        self._db_file = db_file
-        self._db = SqliteDict(db_file, autocommit=True, tablename="authserver")
-        self._token_validity = token_validity
-        self._SECRET_KEY = secret_key
+    def __init__(self, config, secret_config):
+        self._users_file = config["db_file"]
+        self._users = SqliteDict(self._users_file, autocommit=True, tablename="authserver")
+        self._token_validity = config["token_valid_time"]
+        self._SECRET_KEY = secret_config["SECRET_KEY"]
         self._CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
 
 
     def _unixtime(self):
         return int(time())
-
-    
-    def _hash_password(self, password, salt):
-        hashed = hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            salt,
-            100000
-        )
-
-        return hashed
 
     
     def _gen_password(self, length=8):
@@ -43,7 +32,7 @@ class UsersDatabaseWrapper:
 
     def _hash_password(self, password, username=None, salt=None):
         if salt is None:
-            salt = self._db["users"][username]["salt"]
+            salt = self._users[username]["salt"]
 
         hashed = hashlib.pbkdf2_hmac(
             "sha256",
@@ -57,7 +46,7 @@ class UsersDatabaseWrapper:
     
     def add_user(self, username, password=None, access_level="user", disallow_tokens_before=0, restrict_access_to=None, block_login=False):
         try:
-            _ = self._db["users"][username]
+            _ = self._users[username]
             raise UserAlreadyExists(username)
         except KeyError:
             pass
@@ -70,11 +59,11 @@ class UsersDatabaseWrapper:
         else:
             reset_password = False
 
-        user = {"username": username, "hashed_password": self._hash_password(password, salt),
+        user = {"username": username, "hashed_password": self._hash_password(password, salt=salt),
         "salt": salt, "access_level": access_level, "disallow_tokens_before": disallow_tokens_before,
         "restrict_access_to": restrict_access_to, "reset_password": reset_password, "block_login": block_login}
         
-        self._db["users"][username] = user
+        self._users[username] = user
 
         if reset_password:
             return {"username": username, "access_level": access_level, "password": password}
@@ -101,7 +90,7 @@ class UsersDatabaseWrapper:
                 raise TokenInvalid
 
 
-            if self._db["users"][payload["user"]]["block_login"]:
+            if self._users[payload["user"]]["block_login"]:
                 raise UserBlocked(payload['username'])
 
         except KeyError:
@@ -112,7 +101,7 @@ class UsersDatabaseWrapper:
 
     def _user_exists(self, user):
         try:
-            _ = self._db["users"][user]["username"]
+            _ = self._users[user]
         except KeyError:
             raise UserNotFound(user)
 
@@ -122,7 +111,7 @@ class UsersDatabaseWrapper:
     def _check_password(self, username, password):
         self._user_exists(username)
 
-        correct_hash = self._db["users"][username]["hashed_password"]
+        correct_hash = self._users[username]["hashed_password"]
         this_hash = self._hash_password(password=password, username=username)
 
         if this_hash == correct_hash:
@@ -131,7 +120,7 @@ class UsersDatabaseWrapper:
             return False
 
 
-    def login(self, username, password, service_id, access_level="User", restricted_to=None):
+    def login(self, username, password, service_id=0, access_level="User", restricted_to=None):
         self._user_exists(username)
         if self._check_password(username, password):
             token = jwt.encode({

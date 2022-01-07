@@ -1,8 +1,8 @@
 import secret_config                                            # Secret config, containes SECRET_KEY
 from config import config                                       # Configs
-from db.db_exceptions import IncorrectPassword, TokenExpired, TokenInvalid, UserNotFound                                                      # JSON Web Tokens
+from db.db_exceptions import IncorrectPassword, TokenExpired, TokenInvalid, UserAlreadyExists, UserNotFound                                                      # JSON Web Tokens
 from db.db import UsersDatabaseWrapper
-from flask import Flask, request, jsonify                       # Everything Flask related                                          # To get Unixtime
+from flask import Flask, json, request, jsonify                       # Everything Flask related                                          # To get Unixtime
 from functools import wraps                                     # To create decorators
 
 
@@ -23,7 +23,7 @@ def login_required(func):
             return jsonify({"error": "Token expired. Please login again"}), 401
 
         except TokenInvalid:
-            return jsonify({"error": "Invalid signature. Please login again"}), 401
+            return jsonify({"error": "Token invalid. Please login again"}), 401
 
         # Catch all
         except Exception as e:
@@ -56,7 +56,7 @@ def auth(*args, **kwargs):
     payload = kwargs["payload"]
     headers = kwargs["headers"]
 
-    return jsonify(payload, headers)
+    return jsonify({"payload": payload})
 
 
 # Get authserver status. For displaying messages during downtime
@@ -74,12 +74,41 @@ def home(*args, **kwargs):
     return jsonify({"message": f"Welcome {payload['user']}"})
 
 
+@app.route("/register", methods=["POST"])
+def register():
+    if not config["allow_register"]:
+        return jsonify({"error": "Public Registration is disabled. Please contact the admin to register"}), 403
+
+    data = request.get_json()
+
+    if "password" not in data:
+        data["password"] = None
+
+    try:
+        user = db.add_user(
+            username=data["username"],
+            password=data["password"]
+        )
+
+    except UserAlreadyExists:
+        return jsonify({"error": "This username already exists. Please pick another one."}), 409
+
+    return jsonify(user), 200
+
+    '''
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "Data received is invalid. Please check documentation"}), 400
+    '''
+
+
 @app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
+    print("Data", data)
 
     try:
-        token = db.login(username=data["username"], password=data["password"], service_id=config["service_id"], access_level=data["access_level"], restricted_to=None)
+        token = db.login(username=data["username"], password=data["password"], restricted_to=None)
     
     except UserNotFound:
         return jsonify({"error": f"User {data['username']} not found"}), 404
@@ -90,6 +119,11 @@ def login():
     return jsonify({"token": token})
 
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return jsonify({"error": "The path is not valid"}), 404
+
+
 if __name__ == "__main__":
-    db = UsersDatabaseWrapper(db_file="users.db", token_validity=config["token_valid_time"], secret_key=secret_config.secrets["SECRET_KEY"], debug=config["debug"], min_pass_length=config["min_password_length"])
+    db = UsersDatabaseWrapper(config, secret_config.secrets)
     app.run(debug=config["debug"], host=config["address"], port=config["port"])
