@@ -18,6 +18,15 @@ config = {
     # Port to host server on
     "port": 5000,
     
+    # How to detect illegal auth attempt. SUPER IMPORTANT, if this fails, any IP may try to authenticate
+    "block_ips_by": {
+        # Whitelist of IPs allowed to authenticate. ONLY ADD OTHER, TRUSTED BACKEND SERVICES
+        "trused_ips": [],
+        
+        # Will block any requests with these headers (headers set on requests coming from internet)
+        "headers": ["X-Real-IP", "X-Forwarded-For"]
+    }
+        
     # How many seconds tokens will be valid for
     "token_valid_time": 120,
     
@@ -37,8 +46,10 @@ config = {
     "username_rules": {
         "min_length": 4,
         "max_length": 30,
+        
         # Charachters not allowd in username
         "banned_symbols": ""
+        
         # Settings this to a string will only allow new username with these charachters, rest will be blocked
         "whitelist_symbols": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghjiklmnopqrstuvwxyz1234567890_!#¤%&£$€"
     }
