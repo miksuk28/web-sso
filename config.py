@@ -26,6 +26,6 @@ config = {
     "secret_config_location": "",
     # Block date which overrides all user blocks
     "global_dissalow_tokens_before": 0,
-    # Minimum password length
-    "min_password_length": 8
+    # Password rules
+    "password_rules: {"min_length": 8, "require_uppercase": False, "require_special_char": False, "require_num": False}
 }
