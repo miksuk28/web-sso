@@ -1,4 +1,7 @@
 
+from os import execlpe
+
+
 class UserAlreadyExists(Exception):
     pass
 
@@ -18,4 +21,7 @@ class TokenExpired(Exception):
     pass
 
 class TokenInvalid(Exception):
+    pass
+
+class NotAllowedInProduction(Exception):
     pass

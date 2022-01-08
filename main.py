@@ -1,54 +1,47 @@
-import secret_config
+from secret_config import secrets
 from config import config
+from admin_blueprint import admin
+from importlib import reload
 from db.db_exceptions import IncorrectPassword, TokenExpired, TokenInvalid, UserAlreadyExists, UserNotFound                                                      # JSON Web Tokens
 from db.db import UsersDatabaseWrapper
 from flask import Flask, request, jsonify
-from functools import wraps
+from login_wrapper import login_required
 from logger import Logger
+
+# TEMPORARY, TO BE REMOVED
+from flask import render_template
 
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = secret_config.secrets["SECRET_KEY"]
+app.register_blueprint(admin, url_prefix="/admin")
+app.config["SECRET_KEY"] = secrets["SECRET_KEY"]
 
 
+class ExternalIPsReachedSensitiveEndpoint(Exception):
+    pass
+
+
+# FOR TESTING
+@app.route("/get_users", methods=["GET"])
+def get_users():
+    if not config["debug"]:
+        return jsonify({"error": "The path is not valid"}), 404
+    else:
+        users = db._get_all_users()
+        print(f"Users: {users}")
+        return render_template("users.html", users=users)
+
+
+# Reload config.py
 @app.route("/reload_config", methods=["GET"])
 def reload_config():
+    global config
+    reload(config)
+
     from config import config
+
     print(config)
     return jsonify({"info": "Config reloaded"})
-
-
-# Authentication decorator
-def login_required(func):
-    @wraps(func)
-    def decorated_function(*args, **kwargs):
-        token = request.headers.get("token")
-
-        try:
-            payload = db.auth(token)
-
-        except TokenExpired:
-            return jsonify({"error": "Token expired. Please login again"}), 401
-
-        except TokenInvalid:
-            return jsonify({"error": "Token invalid. Please login again"}), 401
-
-        # Catch all
-        except Exception as e:
-            print(e)
-            return jsonify({"error": "An internal server error has occured. Please contact the admin"}), 500
-
-        if config["debug"]:
-            print(f"\nPayload: {payload}\n")
-            print(f"Expiration: {payload['expiration']}")
-        
-        kwargs["payload"] = payload
-        kwargs["headers"] = request.headers
-
-        # Data gets passed back into public original function and run
-        return func(*args, **kwargs)
-    
-    return decorated_function
 
 
 # Public
@@ -90,6 +83,8 @@ def register():
         return jsonify({"error": "Public Registration is disabled. Please contact the admin to register"}), 403
 
     data = request.get_json()
+    if data == None:
+        return jsonify({"error": "No JSON in body"})
 
     if "password" not in data:
         data["password"] = None
@@ -100,7 +95,7 @@ def register():
             password=data["password"]
         )
 
-        logger.log(text="Created User", user=data["username"])
+        logger.log(text="Created User", user=data["username"], service_id=0)
     except UserAlreadyExists:
         return jsonify({"error": "This username already exists. Please pick another one."}), 409
 
@@ -112,8 +107,11 @@ def login():
     data = request.get_json()
     print("Data", data)
 
+    if data == None:
+        return jsonify({"error": "No JSON in body"})
+
     try:
-        token = db.login(username=data["username"], password=data["password"], restricted_to=None)
+        token, expiration = db.login(username=data["username"], password=data["password"], restricted_to=None)
         logger.log("Generated token", service_id=1, user=data["username"], ip="localhost")
     except UserNotFound:
         return jsonify({"error": f"User {data['username']} not found"}), 404
@@ -121,7 +119,7 @@ def login():
     except IncorrectPassword:
         return jsonify({"error": "Password is incorrect"}), 403
 
-    return jsonify({"token": token})
+    return jsonify({"token": token, "expiration": expiration})
 
 
 @app.errorhandler(404)
@@ -129,7 +127,12 @@ def page_not_found(e):
     return jsonify({"error": "The path is not valid"}), 404
 
 
+@app.errorhandler(405)
+def page_not_found(e):
+    return jsonify({"error": "Method not allowed for the requested URL"}), 405
+
+
 if __name__ == "__main__":
     logger = Logger("log.txt")
-    db = UsersDatabaseWrapper(config, secret_config.secrets)
+    db = UsersDatabaseWrapper(config, secrets)
     app.run(debug=config["debug"], host=config["address"], port=config["port"])

@@ -12,6 +12,7 @@ import hashlib
 class UsersDatabaseWrapper:
     def __init__(self, config, secret_config):
         self._users_file = config["db_file"]
+        self._debug = config["debug"]
         self._users = SqliteDict(self._users_file, autocommit=True, tablename="authserver")
         self._token_validity = config["token_valid_time"]
         self._SECRET_KEY = secret_config["SECRET_KEY"]
@@ -30,6 +31,17 @@ class UsersDatabaseWrapper:
         return password
 
 
+    def _get_all_users(self):
+        if self._debug:
+            users = []
+            for user in self._users:
+                users.append(user)
+            
+            return users
+        else:
+            raise NotAllowedInProduction
+
+
     def _hash_password(self, password, username=None, salt=None):
         if salt is None:
             salt = self._users[username]["salt"]
@@ -45,11 +57,8 @@ class UsersDatabaseWrapper:
 
     
     def add_user(self, username, password=None, access_level="user", disallow_tokens_before=0, restrict_access_to=None, block_login=False):
-        try:
-            _ = self._users[username]
+        if username in self._users.keys():
             raise UserAlreadyExists(username)
-        except KeyError:
-            pass
 
         salt = gensalt()
         
@@ -130,16 +139,18 @@ class UsersDatabaseWrapper:
 
     def login(self, username, password, service_id=0, access_level="User", restricted_to=None):
         self._user_exists(username)
+        print(f"Username: {username} - Password: {password}")
         if self._check_password(username, password):
+            expiration = self._unixtime() + self._token_validity
             token = jwt.encode({
                 "user": username,
                 "access_level": access_level,
-                "expiration": self._unixtime() + self._token_validity,
+                "expiration": expiration,
                 "restricted_to": restricted_to 
             },
             self._SECRET_KEY, "HS256")
 
-            return token
+            return token, expiration
         else:
             raise IncorrectPassword
 

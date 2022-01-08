@@ -10,7 +10,7 @@ _server_status_codes = {
 config = {
     # Enable or disable Flask server debug mode and output debug info
     # SET TO FALSE IN PRODUCTION ENV.
-    "debug": False,
+    "debug": True,
     
     # Address to host server on
     "address": "127.0.0.1",

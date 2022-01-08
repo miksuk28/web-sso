@@ -13,3 +13,13 @@ Security things:
 
 Other Things:
 * Consider making a centralized logging server?
+
+Logger fields:
+* Severity
+* Type
+* Message
+* Origin Server
+* User
+* Sent by module?
+* IP, if relevant
+* Date and time
