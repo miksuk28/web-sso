@@ -15,6 +15,16 @@ config = {
     # Address to host server on
     "address": "127.0.0.1",
     
+    "database": {
+        # Password is in secrets file
+        "port": 21017,
+        "host": "db",
+        # Only change this if you know what you are doing
+        "db_username": "UserAdmin",
+        "db_name": "UserData",
+        "db_col_name": "Users"
+    },
+
     # Port to host server on
     "port": 5000,
     
