@@ -1,4 +1,3 @@
-from collections import defaultdict
 from logging import debug
 from jwt.exceptions import DecodeError, ExpiredSignatureError, InvalidKeyError, InvalidSignatureError
 from bcrypt import gensalt
@@ -15,8 +14,8 @@ class UsersDatabaseWrapper:
         connection_str = f"mongodb://{config['database']['db_username']}:{secret_config['DB_PASSWORD']}@{config['database']['host']}"
         self._debug = config["debug"]
         self._client = pymongo.MongoClient(connection_str)
-        self._db = self._client[config["db_name"]]
-        self._user_col = self._db[config["db_col_name"]]
+        self._db = self._client[config["database"]["db_name"]]
+        self._user_col = self._db[config["database"]["db_col_name"]]
         self._token_validity = config["token_valid_time"]
         self._SECRET_KEY = secret_config["SECRET_KEY"]
         self._CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
@@ -47,7 +46,10 @@ class UsersDatabaseWrapper:
 
     def _hash_password(self, password, username=None, salt=None):
         if salt is None:
-            salt = self._users[username]["salt"]
+            #try:
+            salt = self._user_col.find_one({"username": username})["salt"]
+            #except KeyError:
+            #    raise MissingDocumentKey(f"{username}: salt")
 
         hashed = hashlib.pbkdf2_hmac(
             "sha256",
@@ -60,7 +62,7 @@ class UsersDatabaseWrapper:
 
     
     def add_user(self, username, password=None, access_level="user", disallow_tokens_before=0, restrict_access_to=None, block_login=False):
-        if username in self._user_col:
+        if self._user_col.find_one({"username": username}) is not None:
             raise UserAlreadyExists(username)
 
         salt = gensalt()
@@ -83,10 +85,7 @@ class UsersDatabaseWrapper:
             "registered": self._unixtime()
         }
         
-        operation = self._user_col.insert_one(user)
-
-        if self._debug:
-            print(operation)
+        self._user_col.insert_one(user)
 
         if reset_password:
             return {"username": username, "access_level": access_level, "password": password}
@@ -135,18 +134,25 @@ class UsersDatabaseWrapper:
     def _check_password(self, username, password):
         self._user_exists(username)
 
-        correct_hash = self._users[username]["hashed_password"]
+        correct_hash = self._user_col.find_one({"username": username}, {"hashed_password": 1})
+        if correct_hash is None:
+            raise MissingDocumentKey(f"{username}: hashed_password")
+
+                
         this_hash = self._hash_password(password=password, username=username)
 
-        if this_hash == correct_hash:
+        if this_hash == correct_hash["hashed_password"]:
             return True
         else:
             return False
 
 
     def login(self, username, password, service_id=0, access_level="User", restricted_to=None):
-        self._user_exists(username)
-        print(f"Username: {username} - Password: {password}")
+        if not self._user_exists(username):
+            raise UserNotFound(username)
+
+        if self._debug: print(f"Username: {username} - Password: {password}")
+
         if self._check_password(username, password):
             expiration = self._unixtime() + self._token_validity
             token = jwt.encode({
@@ -157,7 +163,8 @@ class UsersDatabaseWrapper:
             },
             self._SECRET_KEY, "HS256")
 
-            return token, expiration
+            print(token)
+            return token.decode("UTF-8"), expiration
         else:
             raise IncorrectPassword
 

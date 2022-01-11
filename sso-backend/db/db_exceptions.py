@@ -25,3 +25,6 @@ class TokenInvalid(Exception):
 
 class NotAllowedInProduction(Exception):
     pass
+
+class MissingDocumentKey(Exception):
+    pass

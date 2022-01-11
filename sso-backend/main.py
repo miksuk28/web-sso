@@ -1,8 +1,7 @@
 from secret_config import secrets
 from config import config
 from admin_blueprint import admin
-from importlib import reload
-from db.db_exceptions import IncorrectPassword, TokenExpired, TokenInvalid, UserAlreadyExists, UserNotFound                                                      # JSON Web Tokens
+from db.db_exceptions import IncorrectPassword, MissingDocumentKey, TokenExpired, TokenInvalid, UserAlreadyExists, UserNotFound                                                      # JSON Web Tokens
 from db.db import UsersDatabaseWrapper
 from flask import Flask, request, jsonify
 from login_wrapper import login_required
@@ -30,18 +29,6 @@ def get_users():
         users = db._get_all_users()
         print(f"Users: {users}")
         return render_template("users.html", users=users)
-
-
-# Reload config.py
-@app.route("/reload_config", methods=["GET"])
-def reload_config():
-    global config
-    reload(config)
-
-    from config import config
-
-    print(config)
-    return jsonify({"info": "Config reloaded"})
 
 
 # Public
@@ -99,16 +86,21 @@ def register():
     except UserAlreadyExists:
         return jsonify({"error": "This username already exists. Please pick another one."}), 409
 
+    except MissingDocumentKey:
+        return jsonify({"error": "A database error has occured. Please contact the admin"})
+
     return jsonify(user), 200
 
 
 @app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
-    print("Data", data)
 
-    if data == None:
-        return jsonify({"error": "No JSON in body"})
+    try:
+        if data["username"] == "" or data["username"] == None or data["password"] == "" or data["password"] == None:
+            raise KeyError
+    except KeyError:
+        return jsonify({"error": "Missing field(s). Please check data and try again"})
 
     try:
         token, expiration = db.login(username=data["username"], password=data["password"], restricted_to=None)
@@ -119,12 +111,24 @@ def login():
     except IncorrectPassword:
         return jsonify({"error": "Password is incorrect"}), 403
 
+    except KeyError:
+        return jsonify({"error": "Missing fiels(s). Please check data and try again"}), 400
+
+    '''
+    except MissingDocumentKey:
+        return jsonify({"error": "A database error has occured. Please contact the admin"}), 500
+    '''
     return jsonify({"token": token, "expiration": expiration})
 
 
 @app.errorhandler(404)
 def page_not_found(e):
     return jsonify({"error": "The path is not valid"}), 404
+
+
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({"error": "Bad request. Please try again"}), 400
 
 
 @app.errorhandler(405)
