@@ -16,6 +16,8 @@ class UserDoesNotExist(Exception):
 class IncorrectPassword(Exception):
     pass
 
+
+# Token exceptions
 class ExpiredToken(Exception):
     pass
 
