@@ -11,7 +11,7 @@ CREATE TABLE users (
     block_login_reason      text,
     block_login_type        text,
     tokens_blocked_after    integer,
-    registered_time         integer,    NOT NULL,
+    registered_time         integer     NOT NULL,
     registered_ip           text,
     last_ip_login           text,
     admin                   boolean     NOT NULL,
