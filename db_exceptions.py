@@ -1,6 +1,3 @@
-from unittest import expectedFailure
-
-
 class CannotExecuteSQL(Exception):
     pass
 
@@ -16,6 +13,8 @@ class UserDoesNotExist(Exception):
 class IncorrectPassword(Exception):
     pass
 
+class MissingValue(Exception):
+    pass
 
 # Token exceptions
 class ExpiredToken(Exception):
