@@ -17,6 +17,13 @@ class UsersDatabaseWrapper:
         self._db = self._connect_to_db(self._db_file)
         self._global_token_block = global_token_block
         self.__SECRET_KEY = secret_key
+        
+        # Setup
+        self._enable_primary_keys()
+
+
+    def _enable_primary_keys(self):
+        self._db.execute("PRAGMA foreign_keys = ON;")
 
 
     def _exit_cleanly(self, reason, error=True):
@@ -83,8 +90,12 @@ class UsersDatabaseWrapper:
         db_pass = result[1]
         db_salt = result[2]
         db_admin = result[6]
+        db_block_login = result[3]
 
-        if compare_digest(db_pass, self._hash_password(password, db_salt)):
+        if db_block_login != 0 or False:
+            raise exc.BlockedLogin(result[5], result[4])
+
+        elif compare_digest(db_pass, self._hash_password(password, db_salt)):
             token, expiration = self._generate_token(username, admin=db_admin)
 
             return token, expiration
@@ -92,10 +103,61 @@ class UsersDatabaseWrapper:
             raise exc.IncorrectPassword
 
 
+    def _get_userid(self, username):
+        sql_stmt = '''
+            SELECT id FROM users WHERE username=?
+        '''
+
+        cur = self._db.cursor()
+        cur.execute(sql_stmt, (username,))
+        result = cur.fetchone()
+
+        if result is None:
+            raise exc.UserDoesNotExist(username)
+        else:
+            return result[0]
+
+
+    def get_user(self, id):
+        sql_stmt = '''
+            SELECT username, fname, lname, block_login,
+            block_login_reason, block_login_type,
+            registered_time, admin
+
+            FROM users
+
+            WHERE id=?
+        '''
+
+        cur = self._db.cursor()
+        cur.execute(sql_stmt, (id,))
+        result = cur.fetchone()
+
+        if result is None:
+            raise exc.UserDoesNotExist(id)
+
+        user_info = {
+            "id": id,
+            "username": result[0],
+            "fname": result[1],
+            "lname": result[2],
+            "block_login": result[3],
+            "block_login_reason": result[4],
+            "block_login_type": result[5],
+            "registed_time": result[6],
+            "admin": result[7]
+        }
+
+        return user_info
+
+
     def _generate_token(self, username, admin=False):
+        user_id = self._get_userid(username)[0]
+        
         expiration = int(time()) + self._token_valid_for
         token = jwt.encode({
             "username": username,
+            "user_id": user_id,
             "iat": int(time()),
             "exp": expiration,
             "admin": admin

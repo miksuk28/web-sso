@@ -22,3 +22,6 @@ class ExpiredToken(Exception):
 
 class InvalidToken(Exception):
     pass
+
+class BlockedLogin(Exception):
+    pass
