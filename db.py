@@ -1,34 +1,29 @@
-import sqlite3
-from unittest import result
+import psycopg2
+import psycopg2.extras
 import jwt
 import hashlib
 from bcrypt import gensalt
-from time import time
+from datetime import datetime, timezone
 from sys import exit
 from hmac import compare_digest
+from sql_statements import SQLStatements
 import db_exceptions as exc
 import jwt.exceptions as jwtexc
 
 
 class UsersDatabaseWrapper:
-    def __init__(self, db_file, token_validity, secret_key, global_token_block=0):
-        self._db_file = db_file
+    def __init__(self, token_validity, secret_key, database, username, password, address, global_token_block=0):
         self._token_valid_for = token_validity
-        self._db = self._connect_to_db(self._db_file)
+        self._db = self._connect_to_db(address, database, username, password)
+        
         self._global_token_block = global_token_block
         self.__SECRET_KEY = secret_key
-        
-        # Setup
-        self._enable_primary_keys()
-
-
-    def _enable_primary_keys(self):
-        self._db.execute("PRAGMA foreign_keys = ON;")
 
 
     def _exit_cleanly(self, reason, error=True):
         '''Close the database connection before exiting'''
-        self._db.close()
+        if self._db is not None:
+            self._db.close()
 
         if error:
             print(f"An error has occured and the execution can not continue\n\nReason:\n{reason}")
@@ -38,18 +33,24 @@ class UsersDatabaseWrapper:
             exit(0)
 
 
-    def _connect_to_db(self, db_file):
-        '''Connect to db and return db object'''
-        conn = None
+    def _connect_to_db(self, address, database, username, password):
         try:
-            conn = sqlite3.connect(db_file, check_same_thread=False)
+            conn = psycopg2.connect(
+                cursor_factory=psycopg2.extras.DictCursor,
+                host=address,
+                database=database,
+                user=username,
+                password=password
+            )
+            
             return conn
-        except sqlite3.Error as e:
+        except psycopg2.Error as e:
             self._exit_cleanly(e, error=True)
 
 
     def _hash_password(self, password, salt):
         '''Hashed and returns the salted password'''
+
         hashed = hashlib.pbkdf2_hmac(
             "sha256",
             password.encode("utf-8"),
@@ -63,59 +64,57 @@ class UsersDatabaseWrapper:
     def _check_if_user_exists(self, username):
         '''Checks database and returns true if user exists'''
         cur = self._db.cursor()
-        cur.execute("SELECT id FROM users WHERE username=?", (username,))
+        cur.execute("SELECT user_id FROM users WHERE username=%s", (username,))
 
-        result = cur.fetchone()
-
-        if result:
+        if cur.fetchone() is not None:
             return True
         else:
             return False
 
 
     def login(self, username, password):
-        '''Check if user exists, and generate jwt if password is right'''
         if not self._check_if_user_exists(username):
             raise exc.UserDoesNotExist(username)
 
-        sql_stmt = '''
-            SELECT username, pass_hash, salt, block_login, block_login_reason, block_login_type, admin
-            FROM users
-            WHERE username=?
-        '''
-
         cur = self._db.cursor()
-        cur.execute(sql_stmt, (username,))
-        result = cur.fetchone()
-        db_pass = result[1]
-        db_salt = result[2]
-        db_admin = result[6]
-        db_block_login = result[3]
+        cur.execute(SQLStatements.get_user_and_password, (username,))
+        user = cur.fetchone()
 
-        if db_block_login != 0 or False:
-            raise exc.BlockedLogin(result[5], result[4])
+        if user.get("block_login"):
+            raise exc.BlockedLogin(username, user["block_login_reason"])
 
-        elif compare_digest(db_pass, self._hash_password(password, db_salt)):
-            token, expiration = self._generate_token(username, admin=db_admin)
-
+        elif compare_digest(user.get("hashed_password").encode("utf-8"), self._hash_password(password, user.get("salt").encode("utf-8") )):
+            token, expiration = self._generate_token(username, admin=False)
             return token, expiration
+
         else:
-            raise exc.IncorrectPassword
+            raise exc.IncorrectPassword(username)
+
+
+    def _is_admin(self, username):
+        cur = self._db.cursor()
+        cur.execute(SQLStatements.is_admin, (username,))
+        admin = cur.fetchone()
+
+        if admin.get("username") == username:
+            return True
+        else:
+            return False
+            
+
+    def timestamp(self):
+        return datetime.now(timezone.utc)
 
 
     def _get_userid(self, username):
-        sql_stmt = '''
-            SELECT id FROM users WHERE username=?
-        '''
-
         cur = self._db.cursor()
-        cur.execute(sql_stmt, (username,))
-        result = cur.fetchone()
+        cur.execute(SQLStatements.get_user_id, (username,))
+        user_id = cur.fetchone()
 
-        if result is None:
+        if user_id is None:
             raise exc.UserDoesNotExist(username)
         else:
-            return result[0]
+            return user_id["user_id"]
 
 
     def get_user(self, id):
@@ -185,18 +184,16 @@ class UsersDatabaseWrapper:
         return payload
 
 
-    def create_user(
+    def create_user_old(
             self,
             username,
             password,
             fname=None,
             lname=None,
-            registered_ip=None,
             block_login=False,
             block_login_reason=None,
-            block_login_type=None,
-            tokens_blocked_after=None,
-            admin=False
+            admin=False,
+            admin_granter=None
             ):
         '''Adds user to database. Only to be run by admins'''
         # Raises exception if username taken
@@ -221,3 +218,44 @@ class UsersDatabaseWrapper:
         cur.execute(sql_stmt, values)
 
         self._db.commit()
+
+
+    def create_user(self, username, password, fname=None, lname=None, block_login=False, block_login_reason=False, admin=False, admin_granter=None):
+        if self._check_if_user_exists(username):
+            raise exc.UserAlreadyExists(username)
+
+        salt = gensalt()
+        hashed_pass = self._hash_password(password, salt)
+
+        cur = self._db.cursor()
+        cur.execute(SQLStatements.create_user, (
+            username, fname, lname, self.timestamp(),
+            block_login, block_login_reason
+        ))
+        # Register password
+        cur.execute(SQLStatements.add_user_password, (
+            username, hashed_pass, salt, self.timestamp(), None
+        ))
+
+        self._db.commit()
+
+        if admin:
+            self.add_admin(username, granter=admin_granter)
+
+
+    def add_admin(self, username, granter):
+        if not self._check_if_user_exists(username):
+            raise exc.UserDoesNotExist(username)
+
+        elif self._is_admin(username):
+            # User is already admin - do nothing
+            return
+
+        elif self._is_admin(granter):
+            cur = self._db.cursor()
+            cur.execute(SQLStatements.add_admin, (username, granter, self.timestamp()))
+            self._db.commit()
+
+        else:
+            raise exc.UserIsNotAdmin(granter)
+

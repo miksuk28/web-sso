@@ -1,32 +1,28 @@
-DROP TABLE IF EXISTS users;
-
-CREATE TABLE users (
-    id                      integer     NOT NULL        UNIQUE,
-    username                text        NOT NULL        UNIQUE,
-    fname                   text,
-    lname                   text,
-    pass_hash               text        NOT NULL,
-    salt                    text        NOT NULL,
-    block_login             boolean     NOT NULL,
-    block_login_reason      text,
-    block_login_type        text,
-    tokens_blocked_after    integer,
-    registered_time         integer     NOT NULL,
-    registered_ip           text,
-    last_ip_login           text,
-    admin                   boolean     NOT NULL,
-
-    PRIMARY KEY("id" AUTOINCREMENT)
+CREATE TABLE IF NOT EXISTS users (
+	user_id SERIAL PRIMARY KEY,
+	username VARCHAR(30) UNIQUE NOT NULL,
+	fname VARCHAR(40),
+	lname VARCHAR(40),
+	created_on TIMESTAMP NOT NULL,
+	block_login BOOLEAN NOT NULL,
+	block_login_reason VARCHAR
 );
 
-
-DROP TABLE IF EXISTS banned_tokens;
-
-CREATE TABLE banned_tokens (
-    user_id     integer     NOT NULL,
-    token       text        NOT NULL,
-    banned_time text        NOT NULL,
-    reason      text,
-
-    FOREIGN KEY (user_id)   REFERENCES users (id)
+CREATE TABLE IF NOT EXISTS passwords (
+	user_id SERIAL NOT NULL UNIQUE,
+	hashed_password VARCHAR NOT NULL,
+	salt VARCHAR NOT NULL,
+	last_changed TIMESTAMP NOT NULL,
+	next_change TIMESTAMP,
+	
+	FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS admins (
+	user_id SERIAL NOT NULL UNIQUE,
+	granter_user_id SERIAL NOT NULL,
+	created_on TIMESTAMP NOT NULL,
+
+	FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
+	FOREIGN KEY (granter_user_id) REFERENCES users (user_id) 
+)

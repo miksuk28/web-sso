@@ -5,13 +5,16 @@ from config import config
 from db import UsersDatabaseWrapper
 import db_exceptions as exc
 import verification
-from sqlite3 import Error
+from psycopg2 import Error
 
 app = Flask(__name__)
 
 db = UsersDatabaseWrapper(
-    db_file=config["db_file"],
     token_validity=config["token_validity"],
+    username=secrets["pg_db_user"],
+    password=secrets["pg_db_user_password"],
+    address=secrets["pg_ip"],
+    database=secrets["pg_db"],
     secret_key=secrets["SECRET_KEY"],
     global_token_block=config["global_token_block"]
 )

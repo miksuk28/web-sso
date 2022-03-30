@@ -25,3 +25,6 @@ class InvalidToken(Exception):
 
 class BlockedLogin(Exception):
     pass
+
+class UserIsNotAdmin(Exception):
+    pass
