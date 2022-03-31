@@ -3,7 +3,7 @@ import psycopg2.extras
 import jwt
 import hashlib
 from bcrypt import gensalt
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sys import exit
 from hmac import compare_digest
 from sql_statements import SQLStatements
@@ -50,15 +50,15 @@ class UsersDatabaseWrapper:
 
     def _hash_password(self, password, salt):
         '''Hashed and returns the salted password'''
-
         hashed = hashlib.pbkdf2_hmac(
             "sha256",
             password.encode("utf-8"),
-            salt,
+            salt.encode("utf-8"),
             100000
         )
 
-        return hashed
+        # print(f"HASH FUNC: password: {hashed.hex()}\nSalt: {salt}")
+        return hashed.hex()
 
 
     def _check_if_user_exists(self, username):
@@ -79,11 +79,13 @@ class UsersDatabaseWrapper:
         cur = self._db.cursor()
         cur.execute(SQLStatements.get_user_and_password, (username,))
         user = cur.fetchone()
+        
+        # print(f"Supplied password:\n{password}\n\nHashed supplied password:\n{self._hash_password(password, user.get('salt'))}\n\nHashed from database:\n{user.get('hashed_password')}")
 
         if user.get("block_login"):
             raise exc.BlockedLogin(username, user["block_login_reason"])
 
-        elif compare_digest(user.get("hashed_password").encode("utf-8"), self._hash_password(password, user.get("salt").encode("utf-8") )):
+        elif compare_digest(user.get("hashed_password"), self._hash_password(password, user.get("salt") )):
             token, expiration = self._generate_token(username, admin=False)
             return token, expiration
 
@@ -151,13 +153,13 @@ class UsersDatabaseWrapper:
 
 
     def _generate_token(self, username, admin=False):
-        user_id = self._get_userid(username)[0]
+        user_id = self._get_userid(username)
         
-        expiration = int(time()) + self._token_valid_for
+        expiration = self.timestamp() + timedelta(self._token_valid_for)
         token = jwt.encode({
             "username": username,
             "user_id": user_id,
-            "iat": int(time()),
+            "iat": self.timestamp(),
             "exp": expiration,
             "admin": admin
         },
@@ -200,7 +202,7 @@ class UsersDatabaseWrapper:
         if self._check_if_user_exists(username):
             raise exc.UserAlreadyExists(username)
         
-        salt = gensalt()
+        salt = gensalt().hex()
         hashed_pass = self._hash_password(password, salt)
 
         sql_stmt = '''
@@ -224,7 +226,7 @@ class UsersDatabaseWrapper:
         if self._check_if_user_exists(username):
             raise exc.UserAlreadyExists(username)
 
-        salt = gensalt()
+        salt = gensalt().hex()
         hashed_pass = self._hash_password(password, salt)
 
         cur = self._db.cursor()

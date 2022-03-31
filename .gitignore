@@ -137,4 +137,4 @@ dmypy.json
 # Logs
 logs/
 db/__pycache__
-.ipynb
+*.ipynb
