@@ -119,37 +119,15 @@ class UsersDatabaseWrapper:
             return user_id["user_id"]
 
 
-    def get_user(self, id):
-        sql_stmt = '''
-            SELECT username, fname, lname, block_login,
-            block_login_reason, block_login_type,
-            registered_time, admin
-
-            FROM users
-
-            WHERE id=?
-        '''
-
+    def get_user(self, username):
         cur = self._db.cursor()
-        cur.execute(sql_stmt, (id,))
-        result = cur.fetchone()
+        cur.execute(SQLStatements.get_user, (username,))
+        user = cur.fetchone()
 
-        if result is None:
+        if user is None:
             raise exc.UserDoesNotExist(id)
 
-        user_info = {
-            "id": id,
-            "username": result[0],
-            "fname": result[1],
-            "lname": result[2],
-            "block_login": result[3],
-            "block_login_reason": result[4],
-            "block_login_type": result[5],
-            "registed_time": result[6],
-            "admin": result[7]
-        }
-
-        return user_info
+        return user
 
 
     def _generate_token(self, username, admin=False):
@@ -184,42 +162,6 @@ class UsersDatabaseWrapper:
             raise exc.InvalidToken
 
         return payload
-
-
-    def create_user_old(
-            self,
-            username,
-            password,
-            fname=None,
-            lname=None,
-            block_login=False,
-            block_login_reason=None,
-            admin=False,
-            admin_granter=None
-            ):
-        '''Adds user to database. Only to be run by admins'''
-        # Raises exception if username taken
-        if self._check_if_user_exists(username):
-            raise exc.UserAlreadyExists(username)
-        
-        salt = gensalt().hex()
-        hashed_pass = self._hash_password(password, salt)
-
-        sql_stmt = '''
-            INSERT INTO users(username,fname,lname,pass_hash,salt,
-                block_login,block_login_reason,block_login_type,
-                tokens_blocked_after,registered_time,registered_ip,
-                last_ip_login,admin)
-
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
-        '''
-
-        values = username, fname, lname, hashed_pass, salt, block_login, block_login_reason, block_login_type, tokens_blocked_after, int(time()), registered_ip, None, admin
-
-        cur = self._db.cursor()
-        cur.execute(sql_stmt, values)
-
-        self._db.commit()
 
 
     def create_user(self, username, password, fname=None, lname=None, block_login=False, block_login_reason=False, admin=False, admin_granter=None):
