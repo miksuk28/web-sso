@@ -1,12 +1,12 @@
 class JSONSchemas:
     login = {
-        "type": "object",
-        "properties": {
-            "username": {"type": "string"},
-            "password": {"type": "string"}
+        "type" : "object",
+        "properties" : {
+            "username" : {"type" : "string"},
+            "password" : {"type" : "string"}
         },
         "required": ["username", "password"]
-    },
+    }
 
     token = {
         "type": "object",
@@ -14,7 +14,7 @@ class JSONSchemas:
             "token": {"type": "string"}
         },
         "required": ["token"]
-    },
+    }
 
     register = {
         "type": "object",

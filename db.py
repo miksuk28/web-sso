@@ -86,6 +86,7 @@ class UsersDatabaseWrapper:
 
         elif compare_digest(user.get("hashed_password"), self._hash_password(password, user.get("salt") )):
             jwt_token, access_token, expiration = self._generate_token(username, admin=self._is_admin(username))
+            self._register_token(username, jwt_token, access_token)
 
             return jwt_token, access_token, expiration
 
@@ -110,10 +111,12 @@ class UsersDatabaseWrapper:
         cur.execute(SQLStatements.is_admin, (username,))
         admin = cur.fetchone()
 
-        if admin.get("username") == username:
-            return True
-        else:
+        if admin is None:
             return False
+        elif admin.get("username") == username:
+            return True
+
+        return False
             
 
     def timestamp(self):

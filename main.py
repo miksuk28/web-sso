@@ -22,17 +22,20 @@ db = UsersDatabaseWrapper(
     global_token_block=config["global_token_block"]
 )
 
-@app.route("/login", methods=["POST"])
+@app.route("/authenticate", methods=["POST"])
 @json_validator(schema=JSONSchemas.login)
-def login():
+def authenticate():
     data = request.get_json()
 
     try:
-        token, expiration = db.login(username=data["username"], password=data["password"])
-        return jsonify({"token": token, "exp": expiration})
+        jwt_token, access_token, expiration = db.login(username=data["username"], password=data["password"])
+        if request.headers.get("X-Forwarded-For", None) is not None:
+            return jsonify({"token": access_token, "exp": expiration})
+        else:
+            return jsonify({"jwt": jwt_token, "access_token": access_token, "exp": expiration})
 
     except exc.UserDoesNotExist:
-        return jsonify({"error": "User does exist"}), 404
+        return jsonify({"error": "User does not exist"}), 404
     
     except exc.IncorrectPassword:
         return jsonify({"error": "Incorrect password"}), 403
