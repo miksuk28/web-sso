@@ -143,7 +143,7 @@ class UsersDatabaseWrapper:
         },
         self.__SECRET_KEY, "HS256")
 
-        return token.decode("utf-8"), expiration
+        return token, expiration
 
 
     def _decode_token(self, token):
