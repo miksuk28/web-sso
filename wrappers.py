@@ -14,7 +14,6 @@ def json_validator(schema, *args, **kwargs):
             try:
                 validate(instance=json_data, schema=schema)
             except ValidationError as e:
-                #print(f"Error in json validation:\n{e}")
                 return jsonify({"error": "JSON validation error", "errorMessage": e.message, "expectedSchema": schema}), 400
 
             return f(*args, **kwargs)

@@ -46,3 +46,8 @@ class SQLStatements:
         INSERT INTO passwords (user_id, hashed_password, salt, last_changed, next_change)
         VALUES ((SELECT user_id FROM users WHERE username=%s), %s, %s, %s, %s)
     '''
+
+    register_token = '''
+        INSERT INTO access_tokens (user_id, jwt_token, access_token, expiration)
+        VALUES ((SELECT user_id FROM users WHERE username=%s), %s, %s, %s)
+    '''

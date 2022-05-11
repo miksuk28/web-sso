@@ -2,13 +2,14 @@ import psycopg2
 import psycopg2.extras
 import jwt
 import hashlib
+import db_exceptions as exc
+import jwt.exceptions as jwtexc
 from bcrypt import gensalt
 from datetime import datetime, timezone, timedelta
 from sys import exit
 from hmac import compare_digest
 from sql_statements import SQLStatements
-import db_exceptions as exc
-import jwt.exceptions as jwtexc
+from secrets import token_hex
 
 
 class UsersDatabaseWrapper:
@@ -80,17 +81,28 @@ class UsersDatabaseWrapper:
         cur.execute(SQLStatements.get_user_and_password, (username,))
         user = cur.fetchone()
         
-        # print(f"Supplied password:\n{password}\n\nHashed supplied password:\n{self._hash_password(password, user.get('salt'))}\n\nHashed from database:\n{user.get('hashed_password')}")
-
         if user.get("block_login"):
             raise exc.BlockedLogin(username, user["block_login_reason"])
 
         elif compare_digest(user.get("hashed_password"), self._hash_password(password, user.get("salt") )):
-            token, expiration = self._generate_token(username, admin=False)
-            return token, expiration
+            jwt_token, access_token, expiration = self._generate_token(username, admin=self._is_admin(username))
+
+            return jwt_token, access_token, expiration
 
         else:
             raise exc.IncorrectPassword(username)
+
+
+    def _register_token(self, username, jwt_token, access_token):
+        expiration = self.timestamp() + timedelta(self._token_valid_for)
+        
+        cur = self._db.cursor()
+        cur.execute(
+            SQLStatements.register_token,
+            (username, jwt_token, access_token, expiration)
+        )
+
+        self._db.commit()
 
 
     def _is_admin(self, username):
@@ -132,6 +144,8 @@ class UsersDatabaseWrapper:
 
     def _generate_token(self, username, admin=False):
         user_id = self._get_userid(username)
+
+        access_token = token_hex(32)
         
         expiration = self.timestamp() + timedelta(self._token_valid_for)
         token = jwt.encode({
@@ -143,7 +157,7 @@ class UsersDatabaseWrapper:
         },
         self.__SECRET_KEY, "HS256")
 
-        return token, expiration
+        return token, access_token, expiration
 
 
     def _decode_token(self, token):

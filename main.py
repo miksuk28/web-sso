@@ -28,15 +28,9 @@ def login():
     data = request.get_json()
 
     try:
-        # raises exc.MissingValue if values are missing or blank
-        verification.validate(("username", "password"), data)
-
         token, expiration = db.login(username=data["username"], password=data["password"])
         return jsonify({"token": token, "exp": expiration})
 
-    except exc.MissingValue as Err:
-        return jsonify({"error": f"{Err.args[0]} is missing"}), 400
-    
     except exc.UserDoesNotExist:
         return jsonify({"error": "User does exist"}), 404
     

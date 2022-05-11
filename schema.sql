@@ -25,4 +25,13 @@ CREATE TABLE IF NOT EXISTS admins (
 
 	FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
 	FOREIGN KEY (granter_user_id) REFERENCES users (user_id) 
-)
+);
+
+CREATE TABLE IF NOT EXISTS access_tokens (
+	user_id SERIAL NOT NULL UNIQUE,
+	jwt_token VARCHAR NOT NULL UNIQUE,
+	access_token VARCHAR NOT NULL UNIQUE,
+	expiration TIMESTAMP NOT NULL,
+
+	FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+);

@@ -23,9 +23,9 @@ class JSONSchemas:
             "password":                 {"type": "string"},
             "fname":                    {"type": "string"},
             "lname":                    {"type": "string"},
-            "block_login":              {"type": "bool"},
+            "block_login":              {"type": "boolean"},
             "block_login_reason":       {"type": "string"},
-            "admin":                    {"type": "bool"}
+            "admin":                    {"type": "boolean"}
         },
         "required": ["username", "password"]
     }
