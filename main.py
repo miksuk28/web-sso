@@ -7,6 +7,9 @@ import db_exceptions as exc
 import verification
 from psycopg2 import Error
 
+from wrappers import json_validator
+from json_schemas import JSONSchemas
+
 app = Flask(__name__)
 
 db = UsersDatabaseWrapper(
@@ -19,8 +22,8 @@ db = UsersDatabaseWrapper(
     global_token_block=config["global_token_block"]
 )
 
-
 @app.route("/login", methods=["POST"])
+@json_validator(schema=JSONSchemas.login)
 def login():
     data = request.get_json()
 
@@ -72,6 +75,7 @@ def validate_token():
 
 
 @app.route("/user", methods=["POST"])
+@json_validator(schema=JSONSchemas.register)
 def create_user():
     token = request.headers.get("token", None)
 
@@ -129,6 +133,9 @@ def get_ser(user_id):
 def method_not_allowed(e):
     return jsonify({"error": "Method not allowed for this endpoint"}), 405
 
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({"error": "Bad Request. Does the body contain valid JSON?"}), 400
 
 @app.errorhandler(403)
 def access_denied(e):
