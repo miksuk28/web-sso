@@ -8,7 +8,8 @@
 * Make db respect blocked_login
   
 Flask Decorator Boilerplate
-´´´
+
+```
 from functools import wraps
 
 def json_validator(requred_arg, *args, **kwargs):
@@ -20,4 +21,4 @@ def json_validator(requred_arg, *args, **kwargs):
   
         return wrapper
     return decorator
-´´´
+```
