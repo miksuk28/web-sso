@@ -23,13 +23,28 @@ def json_validator(schema, *args, **kwargs):
     return decorator
 
 
-def authentcate(admin=False, *args, **kwargs):
+def authenticate(db, *args, **kwargs):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
             token = request.headers.get("token")
 
             if token is None or token == "":
-                return jsonify({"error": "Token header is missing"})
-            
-            
+                return jsonify({"error", "Token header is missing"}), 400
+
+            jwt = db.get_jwt(token)
+
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def admin_required(db, *args, **kwargs):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            json_data = request.get_json()
+
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
