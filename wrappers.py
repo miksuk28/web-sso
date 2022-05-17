@@ -21,3 +21,15 @@ def json_validator(schema, *args, **kwargs):
         return wrapper
 
     return decorator
+
+
+def authentcate(admin=False, *args, **kwargs):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            token = request.headers.get("token")
+
+            if token is None or token == "":
+                return jsonify({"error": "Token header is missing"})
+            
+            

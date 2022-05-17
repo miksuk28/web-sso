@@ -51,3 +51,9 @@ class SQLStatements:
         INSERT INTO access_tokens (user_id, jwt_token, access_token, expiration)
         VALUES ((SELECT user_id FROM users WHERE username=%s), %s, %s, %s)
     '''
+
+    get_token = '''
+        SELECT username, jwt_token, access_token, expiration FROM access_tokens
+        LEFT JOIN users ON access_tokens.user_id = users.user_id
+        WHERE access_token=%s
+    '''

@@ -4,9 +4,8 @@ from secret_config import secrets
 from config import config
 from db import UsersDatabaseWrapper
 import db_exceptions as exc
-import verification
 from psycopg2 import Error
-
+from datetime import datetime, timezone
 from wrappers import json_validator
 from json_schemas import JSONSchemas
 
@@ -56,19 +55,14 @@ def validate_token():
     if token is None or token == "":
         return jsonify({"error": "token header is missing"}), 400
     
-    try:
-        payload = db._decode_token(token)
-        return jsonify({"message": "Token is valid", "payload": payload}), 200
-
-    except exc.ExpiredToken:
-        return jsonify({"error": "Access token has expired"}), 401
-
-    except exc.InvalidToken:
-        return jsonify({"error": "Invalid token"}), 401
-
-    except Error as e:
-        print(e)
-        return abort(500)
+    jwt = db.get_jwt(token)
+    if jwt is None:
+        return jsonify({"error": "This token is not valid. Please log in"}), 401
+    else:
+        if jwt["expirationTimestamp"] <= datetime.now(timezone.utc).timestamp():
+            return jsonify({"error": "This token has expired. Please log in again"}), 401
+        
+        return jsonify(jwt), 200
 
 
 @app.route("/user", methods=["POST"])

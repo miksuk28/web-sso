@@ -4,6 +4,7 @@ import jwt
 import hashlib
 import db_exceptions as exc
 import jwt.exceptions as jwtexc
+from time import time
 from bcrypt import gensalt
 from datetime import datetime, timezone, timedelta
 from sys import exit
@@ -13,10 +14,11 @@ from secrets import token_hex
 
 
 class UsersDatabaseWrapper:
-    def __init__(self, token_validity, secret_key, database, username, password, address, global_token_block=0):
+    def __init__(self, token_validity, secret_key, database, username, password, address, global_token_block=0, allow_admin_creation=False):
         self._token_valid_for = token_validity
         self._db = self._connect_to_db(address, database, username, password)
-        
+        self._allow_admin_creation = allow_admin_creation
+
         self._global_token_block = global_token_block
         self.__SECRET_KEY = secret_key
 
@@ -106,6 +108,18 @@ class UsersDatabaseWrapper:
         self._db.commit()
 
 
+    def get_jwt(self, access_token):
+        cur = self._db.cursor()
+        cur.execute(
+            SQLStatements.get_token,
+            (access_token,)
+        )
+        token = dict(cur.fetchone())
+
+        token["expirationTimestamp"] = token["expiration"].timestamp()
+        return dict(token)
+
+
     def _is_admin(self, username):
         cur = self._db.cursor()
         cur.execute(SQLStatements.is_admin, (username,))
@@ -154,7 +168,7 @@ class UsersDatabaseWrapper:
         token = jwt.encode({
             "username": username,
             "user_id": user_id,
-            "iat": self.timestamp(),
+            "iat": datetime.now(timezone.utc).utctimetuple(),
             "exp": expiration,
             "admin": admin
         },
@@ -172,10 +186,12 @@ class UsersDatabaseWrapper:
                 "HS256"
             )
 
-        except jwtexc.ExpiredSignature:
+        except jwtexc.ExpiredSignatureError:
             raise exc.ExpiredToken
 
-        except:
+        except Exception as e:
+            print(e)
+            print(token)
             raise exc.InvalidToken
 
         return payload
@@ -184,6 +200,9 @@ class UsersDatabaseWrapper:
     def create_user(self, username, password, fname=None, lname=None, block_login=False, block_login_reason=False, admin=False, admin_granter=None):
         if self._check_if_user_exists(username):
             raise exc.UserAlreadyExists(username)
+
+        if not self._allow_admin_creation:
+            admin = False
 
         salt = gensalt().hex()
         hashed_pass = self._hash_password(password, salt)
