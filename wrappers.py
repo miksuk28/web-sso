@@ -33,8 +33,10 @@ def authenticate(db, *args, **kwargs):
                 return jsonify({"error", "Token header is missing"}), 400
 
             jwt = db.get_jwt(token)
+            if jwt is None:
+                return jsonify({"error": "Token is not valid"}), 401
 
-            return f(*args, **kwargs)
+            return f(access_token=token, jwt=jwt, *args, **kwargs)
         return wrapper
     return decorator
 

@@ -98,7 +98,7 @@ def create_user():
 
 
 @app.route("/user/<user_id>", methods=["GET"])
-def get_ser(user_id):
+def get_user(user_id):
     if request.headers.get("X-Forwarded-For", None) is not None:
         return abort(403)
     else:

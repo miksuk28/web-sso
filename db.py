@@ -117,7 +117,7 @@ class UsersDatabaseWrapper:
         token = dict(cur.fetchone())
 
         token["expirationTimestamp"] = token["expiration"].timestamp()
-        return dict(token)
+        return token
 
 
     def _is_admin(self, username):
