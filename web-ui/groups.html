@@ -20,7 +20,7 @@
   <div class="w3-sidebar w3-card w3-bar-block" style="width: 20%;">
     <h5 style="font-weight: bold;" class="w3-bar-item">Users</h5>
     <div class="">
-      <a href="#" class="w3-bar-item w3-button">Add User</a>
+      <a href="new_user.html" class="w3-bar-item w3-button">Add User</a>
       <a href="#" class="w3-bar-item w3-button">Manage Users</a>
       <a href="#" class="w3-bar-item w3-button">Delegate Permissions</a>
       <a href="groups.html" class="w3-bar-item w3-button">Manage Groups and Permissions</a>
@@ -36,10 +36,10 @@
   </div>
 
   <div class="w3-container">
-    <h1>Groups</h1>
+    <h2>Groups</h2>
     
     <div style="margin-bottom: 1rem;" class="w3-bar">
-      <button class="w3-btn w3-green">Add</button>
+      <a href="new_group.html"><button class="w3-btn w3-green">Add</button></a>
       <button class="w3-btn w3-red">Delete</button>
     </div>
 
@@ -47,32 +47,38 @@
     <table class="w3-table-all w3-hoverable">
       <thead>
         <tr>
+          <td><input type="checkbox" class="w3-check"></td>
           <th>Group</th>
           <th>Description</th>
           <th>Service</th>
         </tr>
       </thead>
       <tr>
+        <td><input type="checkbox" class="w3-check"></td>
         <td>files_standarduser</td>
         <td>Gives the user default Files permissions</td>
         <td>Files</td>
       </tr>
       <tr>
+        <td><input type="checkbox" class="w3-check"></td>
         <td>files_poweruser</td>
         <td>files_standarduser + Permanent Uploads</td>
         <td>Files</td>
       </tr>
       <tr>
+        <td><input type="checkbox" class="w3-check"></td>
         <td>files_admin</td>
         <td>Gives the user access to view and delete others uploads</td>
         <td>Files</td>
       </tr>
       <tr>
+        <td><input type="checkbox" class="w3-check"></td>
         <td>files_passworduser</td>
         <td>Gives the user default Files permissions but requires password on uploads</td>
         <td>Files</td>
       </tr>
       <tr>
+        <td><input type="checkbox" class="w3-check"></td>
         <td>files_view</td>
         <td>Allows the user to sign in and download files, but not to upload</td>
         <td>Files</td>
@@ -81,7 +87,12 @@
   </div>
 
   <div class="w3-container">
-    <h1>Permissions</h1>
+    <h2>Permissions</h2>
+    <div style="margin-bottom: 1rem;" class="w3-bar">
+      <button class="w3-btn w3-green">Add</button>
+      <button class="w3-btn w3-red">Delete</button>
+    </div>
+
     <table class="w3-table-all w3-hoverable">
       <thead>
         <tr>

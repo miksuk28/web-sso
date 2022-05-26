@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>admin.sukhanik.no</title>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> 
+</head>
+<body>
+  <div class="w3-sidebar w3-card w3-bar-block" style="width: 20%;">
+  <h5 style="font-weight: bold;" class="w3-bar-item">Users</h5>
+  <a href="new_user.html" class="w3-bar-item w3-button">Add User</a>
+  <a href="#" class="w3-bar-item w3-button">Manage Users</a>
+  <a href="#" class="w3-bar-item w3-button">Delegate Permissions</a>
+  <a href="groups.html" class="w3-bar-item w3-button">Manage Groups and Permissions</a>
+
+
+  <h5 style="font-weight: bold;" class="w3-bar-item">Files</h5>
+  </div>
+
+  <div class="" style="margin-left: 20%;">
+  <div class="w3-container w3-teal">
+    <h1><span style="font-weight: bold;">admin</span>.sukhanik.no</h1>
+  </div>
+
+  <div class="w3-container">
+    <h1>New Group</h1>
+
+
+    <div class="w3-margin-bottom">
+      <h5><label>Name</label></h5>
+      <input type="text" class="w3-input">
+    </div>
+
+    <div class="w3-margin-bottom">
+      <h5>Group Permissions</h5>
+  
+      <table class="w3-table-all w3-hoverable">
+        <thead>
+          <tr>
+            <td></td>
+            <th>Group</th>
+            <th>Description</th>
+            <th>Service</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" class="w3-check"></td>
+            <td>files_login</td>
+            <td>Allows logging on to files service</td>
+            <td>Files</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="w3-check"></td>
+            <td>files_upload</td>
+            <td>Allows uploading files with default size limit</td>
+            <td>Files</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="w3-check"></td>
+            <td>files_password</td>
+            <td>Allows uploading password protected files</td>
+            <td>Files</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="w3-check"></td>
+            <td>files_passworduser</td>
+            <td>Gives the user default Files permissions but requires password on uploads</td>
+            <td>Files</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="w3-check"></td>
+            <td>files_view</td>
+            <td>Allows the user to sign in and download files, but not to upload</td>
+            <td>Files</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <button class="w3-button w3-block w3-teal">Create Group</button>
+    
+  </div>
+  </div>
+
+</body>
+</html>
