@@ -21,11 +21,21 @@ class JSONSchemas:
         "properties": {
             "username":                 {"type": "string"},
             "password":                 {"type": "string"},
+            "autoGeneratePassword":     {"type": "boolean"},
+            "changePasswordOnFirstLogin": {"type": "boolean"},
             "fname":                    {"type": "string"},
             "lname":                    {"type": "string"},
-            "block_login":              {"type": "boolean"},
-            "block_login_reason":       {"type": "string"},
-            "admin":                    {"type": "boolean"}
+            "blockLogin":               {"type": "boolean"},
+            "blockLoginReason":         {"type": "string"},
+            "email":                    {"type": "string"},
         },
-        "required": ["username", "password"]
+        "required": ["username", "autoGeneratePassword", "email"]
+    }
+
+    delete_users = {
+        "type": "object",
+        "properties": {
+            "usersToDelete": {"type": "array"}
+        },
+        "required": ["usersToDelete"]
     }

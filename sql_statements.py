@@ -21,6 +21,11 @@ class SQLStatements:
         WHERE username=%s
     '''
 
+    get_all_users = '''
+        SELECT user_id, username, fname, lname, created_on, block_login, block_login_reason
+        FROM users
+    '''
+
     # Check if user is admin
     # Returns users.user_id, username, granter_user_id, admins.created_on based of username
     # Only if user is admin
@@ -37,6 +42,10 @@ class SQLStatements:
         VALUES (%s, %s, %s, %s, %s, %s)
     '''
 
+    delete_user = '''
+        DELETE FROM users WHERE username=%s
+    '''
+
     add_admin = '''
         INSERT INTO admins (user_id, granter_user_id, created_on)
         VALUES ((SELECT user_id FROM users WHERE username=%s), (SELECT user_id FROM users WHERE username=%s), %s)
@@ -48,12 +57,17 @@ class SQLStatements:
     '''
 
     register_token = '''
-        INSERT INTO access_tokens (user_id, jwt_token, access_token, expiration)
-        VALUES ((SELECT user_id FROM users WHERE username=%s), %s, %s, %s)
+        INSERT INTO access_tokens (user_id, access_token, expiration)
+        VALUES ((SELECT user_id FROM users WHERE username=%s), %s, %s)
     '''
 
     get_token = '''
-        SELECT username, jwt_token, access_token, expiration FROM access_tokens
+        SELECT username, access_token, expiration FROM access_tokens
         LEFT JOIN users ON access_tokens.user_id = users.user_id
         WHERE access_token=%s
+    '''
+    
+    create_permission = '''
+        INSERT INTO permissions (name, service_id, description)
+        VALUES (%s, (SELECT service_id FROM services WHERE name=%s), %s)
     '''

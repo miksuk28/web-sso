@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, abort
 from waitress import serve
-from secret_config import secrets
 from config import config
+from secret_config import secrets
 from db import UsersDatabaseWrapper
 import db_exceptions as exc
 from psycopg2 import Error
@@ -10,7 +10,6 @@ from wrappers import json_validator
 from json_schemas import JSONSchemas
 
 app = Flask(__name__)
-
 db = UsersDatabaseWrapper(
     token_validity=config["token_validity"],
     username=secrets["pg_db_user"],
@@ -21,121 +20,32 @@ db = UsersDatabaseWrapper(
     global_token_block=config["global_token_block"]
 )
 
-@app.route("/authenticate", methods=["POST"])
+
+@app.route("/authenticate")
 @json_validator(schema=JSONSchemas.login)
 def authenticate():
-    data = request.get_json()
-
+    json_data = request.get_json()
+    
     try:
-        jwt_token, access_token, expiration = db.login(username=data["username"], password=data["password"])
-        if request.headers.get("X-Forwarded-For", None) is not None:
-            return jsonify({"token": access_token, "exp": expiration})
-        else:
-            return jsonify({"jwt": jwt_token, "access_token": access_token, "exp": expiration})
+        access_token, expiration = db.login(json_data.get("username"), json_data.get("password"))
+        return jsonify({"token": access_token, "exp": expiration, "iat": datetime.now(timezone.utc).timestamp()})
 
     except exc.UserDoesNotExist:
-        return jsonify({"error": "User does not exist"}), 404
+        return jsonify({"error": f"User {json_data.get('username')} does not exist"}), 404
     
     except exc.IncorrectPassword:
-        return jsonify({"error": "Incorrect password"}), 403
+        return jsonify({"error": f"Incorrect password for {json_data.get('username')}"}), 403
 
-    except Error as e:
+    except Exception as e:
         print(e)
         return abort(500)
 
 
-# Only to be called by backends
-@app.route("/validate", methods=["GET"])
-def validate_token():
-    token = request.headers.get("token", None)
+@app.route("/admin/users", methods=["POST"])
+def users():
+    if request.method == "GET":
+        pass
 
-    if request.headers.get("X-Forwarded-For", None) is not None:
-        return abort(403)
-
-    if token is None or token == "":
-        return jsonify({"error": "token header is missing"}), 400
-    
-    jwt = db.get_jwt(token)
-    if jwt is None:
-        return jsonify({"error": "This token is not valid. Please log in"}), 401
-    else:
-        if jwt["expirationTimestamp"] <= datetime.now(timezone.utc).timestamp():
-            return jsonify({"error": "This token has expired. Please log in again"}), 401
-        
-        return jsonify(jwt), 200
-
-
-@app.route("/user", methods=["POST"])
-@json_validator(schema=JSONSchemas.register)
-def create_user():
-    token = request.headers.get("token", None)
-
-    if request.headers.get("X-Forwarded-For", None) is not None:
-        return abort(403)
-
-    elif token is None or token == "":
-        return jsonify({"error": "token header is missing"}), 400
-
-
-    try:
-        payload = db._decode_token(token)
-        
-        if payload["admin"] != True or 1:
-            return abort(403)
-        else:
-            pass
-
-    except exc.ExpiredToken:
-        return jsonify({"error": "Access token has expired"}), 401
-
-    except exc.InvalidToken:
-        return jsonify({"error": "Invalid token"}), 401
-
-    except Error as e:
-        print(e)
-        return abort(500)
-
-
-
-@app.route("/user/<user_id>", methods=["GET"])
-def get_user(user_id):
-    if request.headers.get("X-Forwarded-For", None) is not None:
-        return abort(403)
-    else:
-        if request.headers.get("USER_INFO_KEY", None) != secrets["USER_INFO_KEY"]:
-            return jsonify({"error": "USER_INFO_KEY header missing or incorrect"}), 403
-            
-        else:
-            try:
-                user_info = db.get_user(user_id)
-
-                return jsonify(user_info)
-
-            except exc.UserDoesNotExist:
-                return jsonify({"error": f"User with id {user_id} does not exist"}), 404
-            
-            except Error as e:
-                print(e)
-                return abort(500)
-
-
-
-@app.errorhandler(405)
-def method_not_allowed(e):
-    return jsonify({"error": "Method not allowed for this endpoint"}), 405
-
-@app.errorhandler(400)
-def bad_request(e):
-    return jsonify({"error": "Bad Request. Does the body contain valid JSON?"}), 400
-
-@app.errorhandler(403)
-def access_denied(e):
-    return jsonify({"error": "Access denied"}), 403
-
-
-@app.errorhandler(500)
-def internal_error(e):
-    return jsonify({"error": "An unknown error has occured. Please try again"})
 
 
 if __name__ == "__main__":

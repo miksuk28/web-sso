@@ -1,9 +1,7 @@
 import psycopg2
 import psycopg2.extras
-import jwt
 import hashlib
 import db_exceptions as exc
-import jwt.exceptions as jwtexc
 from time import time
 from bcrypt import gensalt
 from datetime import datetime, timezone, timedelta
@@ -87,36 +85,40 @@ class UsersDatabaseWrapper:
             raise exc.BlockedLogin(username, user["block_login_reason"])
 
         elif compare_digest(user.get("hashed_password"), self._hash_password(password, user.get("salt") )):
-            jwt_token, access_token, expiration = self._generate_token(username, admin=self._is_admin(username))
-            self._register_token(username, jwt_token, access_token)
+            access_token, expiration = self._generate_token(username, admin=self._is_admin(username))
+            self._register_token(username, access_token)
 
-            return jwt_token, access_token, expiration
+            return access_token, expiration
 
         else:
             raise exc.IncorrectPassword(username)
 
 
-    def _register_token(self, username, jwt_token, access_token):
+    def _register_token(self, username, access_token):
         expiration = self.timestamp() + timedelta(self._token_valid_for)
         
         cur = self._db.cursor()
         cur.execute(
             SQLStatements.register_token,
-            (username, jwt_token, access_token, expiration)
+            (username, access_token, expiration)
         )
 
         self._db.commit()
 
 
-    def get_jwt(self, access_token):
+    def validate_token(self, access_token):
         cur = self._db.cursor()
         cur.execute(
             SQLStatements.get_token,
             (access_token,)
         )
-        token = dict(cur.fetchone())
-
-        token["expirationTimestamp"] = token["expiration"].timestamp()
+        result = cur.fetchone()
+        if result is None:
+            return None
+        else:
+            token = dict(result)
+            token["expirationTimestamp"] = token["expiration"].timestamp()
+        
         return token
 
 
@@ -156,7 +158,23 @@ class UsersDatabaseWrapper:
         if user is None:
             raise exc.UserDoesNotExist(id)
 
-        return user
+        return dict(user)
+
+
+    def _listify_list_of_dicts(self, results):
+        temp_list = []
+        for result in results:
+            temp_list.append(dict(result))
+
+        return temp_list
+
+
+    def get_all_users(self):
+        cur = self._db.cursor()
+        cur.execute(SQLStatements.get_all_users)
+        users = cur.fetchall()
+
+        return self._listify_list_of_dicts(users)
 
 
     def _generate_token(self, username, admin=False):
@@ -164,7 +182,9 @@ class UsersDatabaseWrapper:
 
         access_token = token_hex(32)
         
-        expiration = self.timestamp() + timedelta(self._token_valid_for)
+        expiration = datetime.now(timezone.utc) + \
+            timedelta(seconds=self._token_valid_for)
+        '''
         token = jwt.encode({
             "username": username,
             "user_id": user_id,
@@ -175,6 +195,8 @@ class UsersDatabaseWrapper:
         self.__SECRET_KEY, "HS256")
 
         return token, access_token, expiration
+        '''
+        return access_token, expiration
 
 
     def _decode_token(self, token):
@@ -223,6 +245,15 @@ class UsersDatabaseWrapper:
             self.add_admin(username, granter=admin_granter)
 
 
+    def delete_user(self, username):
+        if not self._check_if_user_exists(username):
+            raise exc.UserDoesNotExist(username)
+
+        cur = self._db.cursor()
+        cur.execute(SQLStatements.delete_user, (username,))
+        self._db.commit()
+
+
     def add_admin(self, username, granter):
         if not self._check_if_user_exists(username):
             raise exc.UserDoesNotExist(username)
@@ -238,4 +269,5 @@ class UsersDatabaseWrapper:
 
         else:
             raise exc.UserIsNotAdmin(granter)
+
 

@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import jsonify, request
 from jsonschema import validate, ValidationError
+from datetime import datetime, timezone
 
 def json_validator(schema, *args, **kwargs):
     def decorator(f):
@@ -31,22 +32,41 @@ def authenticate(db, *args, **kwargs):
 
             if token is None or token == "":
                 return jsonify({"error", "Token header is missing"}), 400
+            else:
 
-            jwt = db.get_jwt(token)
-            if jwt is None:
-                return jsonify({"error": "Token is not valid"}), 401
+                db_token = db.validate_token(token)
+                if db_token is None:
+                    return jsonify({"error": "Token is not valid"}), 401
 
-            return f(access_token=token, jwt=jwt, *args, **kwargs)
+                if db_token["expiration"].timestamp() <= datetime.now(timezone.utc).timestamp():
+                    return jsonify({"error": "Token has expired. Please sign in again"}), 401
+                else:
+                    return f(access_token=token, user=db_token["username"], *args, **kwargs)
+        
         return wrapper
     return decorator
 
 
-def admin_required(db, *args, **kwargs):
+def require_admin(db, *args, **kwargs):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            json_data = request.get_json()
+            token = request.headers.get("token")
 
-            return f(*args, **kwargs)
+            if token is None or token == "":
+                return jsonify({"error": "Token header is missing"}), 400
+            else:
+
+                db_token = db.validate_token(token)
+                if db_token is None:
+                    return jsonify({"error": "Token is not valid"}), 401
+
+                if db_token["expiration"].timestamp() <= datetime.now(timezone.utc).timestamp():
+                    return jsonify({"error": "Token has expired. Please sign in again"}), 401
+                else:
+                    if db._is_admin(db_token["username"]):
+                        return f(access_token=token, user=db_token["username"], admin=True,*args, **kwargs)
+                    else:
+                        return jsonify({"error": "Access denied"}), 403
         return wrapper
     return decorator
